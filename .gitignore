@@ -1,0 +1,14 @@
+modules/classifier/data/
+*.pdf
+__pycache__/
+*.pyc
+.claude/
+CLAUDE.md
+.omc/
+prompt_payload_sample.json
+pipeline_test_output.json
+temp/
+modules/frontend/node_modules/
+modules/backend/.env
+*.lnk
+*.bat
