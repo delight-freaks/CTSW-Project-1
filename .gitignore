@@ -11,4 +11,4 @@ temp/
 modules/frontend/node_modules/
 modules/backend/.env
 *.lnk
-*.bat
+*.batmodules/vision/checkpoints/*
