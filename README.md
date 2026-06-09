@@ -14,43 +14,29 @@
 
 ---
 
-## 2. 팀 구성 및 역할 분담
-
-| 팀원 | 배경 | 역할 |
-|---|---|---|
-| 박관용 (A) | LLM 연구, AI 에이전트 해커톤 경험 | 키스트로크 감정 분류기 학습, 멀티모달 신호의 프롬프트 변환 설계, 프롬프트 조립 파이프라인, Trigger Evaluator, Claude API 통신 |
-| 조재현 (B) | 의료 AI 기획, 바이브 코딩 | 브라우저 키스트로크 로거 개발 (React 커스텀 훅), 사용자 평가 설계(PETS), 사용자 테스트 운영 및 분석 |
-| 심인영 (C) | 비전 AI (인턴십 포함, 다수 프로젝트) | 안면 표정 비전 파이프라인 개발 (ResNet 계열), 감정 레이블+확률값 JSON 출력 (0.2초 주기) |
-| 이재철 (D) | ResNet, 백엔드, 보안 | TimescaleDB 기반 세션 데이터 저장·관리 백엔드, 키스트로크 데이터 및 침묵 이벤트 수신·저장 인터페이스 설계 |
-| 이고은 (E) | 피그마, 프론트엔드 | 상담 채팅 UI 개발, 피그마 와이어프레임 설계, 키스트로크 로거 통합, 웹캠 스트림 전달, 침묵 모니터(Silence Monitor) 구현 |
-
-**병렬 개발 전략:** A가 C, D, E의 출력 형식(JSON 인터페이스)을 먼저 정의하면, 각 모듈이 충돌 없이 독립적으로 개발 가능하다. 인터페이스 명세는 `interface_spec.md`를 참고한다.
-
----
-
-## 3. 저장소 구조
+## 2. 저장소 구조
 
 ```
 keystroke-multimodal-counselor/
 ├── modules/
-│   ├── classifier/          # 키스트로크 감정 분류기 (박관용)
+│   ├── classifier/          # 키스트로크 감정 분류기
 │   │   ├── preprocessing.py
 │   │   ├── classifier.py
 │   │   └── data/
 │   │       └── emosurv/     # EmoSurv CSV 4개 (.gitignore 적용)
-│   ├── pipeline/            # 프롬프트 조립 및 LLM 통신 (박관용)
+│   ├── pipeline/            # 프롬프트 조립 및 LLM 통신
 │   │   ├── prompt_assembler.py
 │   │   └── llm_client.py
-│   ├── keystroke/           # 키스트로크 로거 및 백엔드 (조재현, 이재철)
-│   ├── vision/              # 비전 파이프라인 (심인영)
-│   ├── frontend/            # 채팅 UI 및 침묵 모니터 (이고은)
-│   └── evaluation/          # 사용자 평가 (조재현)
-├── interface_spec.md        # 모듈 간 인터페이스 명세 (박관용)
+│   ├── keystroke/           # 키스트로크 로거 및 백엔드
+│   ├── vision/              # 비전 파이프라인
+│   ├── frontend/            # 채팅 UI 및 침묵 모니터
+│   └── evaluation/          # 사용자 평가
+├── interface_spec.md        # 모듈 간 인터페이스 명세 
 ├── .gitignore
 └── README.md
 ```
 
-> **주의:** EmoSurv CSV 파일은 IEEE DataPort 라이선스상 재배포가 금지되어 있으므로 `.gitignore`에 등록하여 레포에 포함하지 않는다. 팀원 각자가 아래 데이터 세팅 절차에 따라 로컬에서 직접 다운로드한다.
+> **주의:** EmoSurv CSV 파일은 IEEE DataPort 라이선스상 재배포가 금지되어 있으므로 `.gitignore`에 등록하여 레포에 포함하지 않는다. 아래 데이터 세팅 절차에 따라 로컬에서 직접 다운로드한다.
 
 ---
 
@@ -230,7 +216,7 @@ vision_output + keystroke_output + text_output
 
 ### 모달리티별 모듈 구성
 
-**모듈 1 — 비전 (심인영 담당)**
+**모듈 1 — 비전**
 
 파이프라인: OpenCV → MediaPipe → ResNet → JSON 출력 (0.2초 주기)
 
@@ -240,21 +226,21 @@ vision_output + keystroke_output + text_output
 
 비전 모듈은 턴 전체의 vision_output 버퍼에서 두 가지 값을 추출하여 프롬프트에 포함한다. 전송 시점의 최신 감정(current emotion)과 턴 중 confidence 최고값을 기록한 감정(peak emotion)을 함께 전달한다. 표정은 잠깐 드러났다가 억제될 수 있으므로 최신값만 사용하면 일시적으로 노출된 감정 신호를 놓칠 수 있다. LLM은 두 값을 비교하여 "현재는 감정을 숨기고 있으나 턴 중 두려움이 포착됨" 같은 맥락을 스스로 해석한다.
 
-**모듈 2 — 키스트로크 (조재현 수집 / 박관용 분류)**
+**모듈 2 — 키스트로크**
 - 조재현: 브라우저에서 key down, key up, 타임스탬프, 삭제 여부를 실시간 수집하는 React 커스텀 훅(useKeystrokeLogger) 개발, 메시지 전송 시 버퍼 일괄 전송
 - 이재철: 전달된 데이터를 TimescaleDB에 수신·저장
 - 박관용: EmoSurv 데이터셋으로 학습한 XGBoost 분류기가 D1U1, D1D2, U1D2 등 키스트로크 피처를 받아 감정 레이블+확률값 출력
 
-**모듈 3 — 텍스트 (박관용 담당)**
+**모듈 3 — 텍스트**
 - 삭제된 텍스트(Counterfactual Text)와 최종 전송 텍스트를 모두 캡처하여 전달
 
-**모듈 4 — 침묵 모니터 (이고은 담당)**
+**모듈 4 — 침묵 모니터**
 
 0.2초마다 텍스트 입력창 상태를 폴링하여 마지막 입력 시점을 추적한다. 입력 없이 8초가 경과하면 침묵 이벤트를 생성하여 박관용의 파이프라인으로 전달한다.
 
 **침묵 임계값 근거:** 일상 대화에서 3초를 넘는 침묵은 심리적으로 유의미한 것으로 간주되며(Heldner & Edlund, 2010), 실제 심리치료 세션에서 치료사가 개입하는 시점은 평균 10초 전후로 관찰된다(Soma et al., 2022). 이를 절충하여 8초를 기본 시간 조건으로 설정한다. 단, 8초 단일 시간 조건만으로는 "읽는 중"과 "망설이는 중"을 구분할 수 없어 임상적으로 불충분하다. 이를 보완하기 위해 비전·키스트로크 감정 신호 조건을 AND로 결합한 복합 트리거(Composite Trigger)를 적용하며, 감정 신뢰도 임계값(θ_vision, θ_keystroke)은 파일럿 테스트(N=5)에서 수집된 신뢰도 분포를 기반으로 확정한다.
 
-**프롬프트 조립 및 LLM 통신 (박관용 담당)**
+**프롬프트 조립 및 LLM 통신**
 
 세 모듈의 JSON 출력을 그대로 LLM에 전달하지 않고, **semantic mapping** 과정을 거쳐 심리적 의미 레이블로 변환한 뒤 구조화된 프롬프트로 조립한다. raw 수치를 그대로 주면 LLM의 해석이 일관되지 않을 수 있기 때문이다.
 
@@ -262,7 +248,7 @@ vision_output + keystroke_output + text_output
 - `prompt_assembler.py`: 모달리티 출력 → 프롬프트 문자열 생성 전담
 - `llm_client.py`: Claude API 호출, 응답 수신, 오류 재시도 전담. 추후 모델 교체(Claude → 로컬 모델 등) 시 이 파일만 수정하면 된다.
 
-**Trigger Evaluator (박관용 담당)**
+**Trigger Evaluator**
 
 버퍼에 누적된 멀티모달 데이터를 보다가 아래 두 가지 조건 중 하나가 충족되면 LLM을 호출한다.
 
